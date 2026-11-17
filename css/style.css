@@ -533,3 +533,59 @@ details.periode[open] > summary { border-bottom-left-radius: 8px; border-bottom-
 .serving.pending .big { color: var(--muted); letter-spacing: .3em; animation: denyut 1s ease-in-out infinite; }
 .serving.pending .btn:disabled { opacity: .45; }
 @keyframes denyut { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+
+/* ==========================================================================
+   Layar display v3: kolom loket besar & berwarna; panggilan layar penuh
+   ========================================================================== */
+.wl-1 { --wa: #1D4ED8; --wb: #1E3A8A; } .wl-2 { --wa: #15803D; --wb: #14532D; } .wl-3 { --wa: #C2410C; --wb: #7C2D12; } .wl-4 { --wa: #6D28D9; --wb: #4C1D95; }
+.wl-5 { --wa: #BE123C; --wb: #881337; } .wl-6 { --wa: #0F766E; --wb: #134E4A; } .wl-7 { --wa: #A16207; --wb: #713F12; } .wl-8 { --wa: #4338CA; --wb: #312E81; }
+
+.disp { height: 100vh; min-height: 0; overflow: hidden; gap: 14px; }
+.disp-grid {
+  flex: 1; min-height: 0; display: grid; gap: 18px; align-content: stretch;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr));
+}
+.dcard.wl {
+  position: relative; container-type: size; display: flex; flex-direction: column; justify-content: space-between; text-align: center; color: #fff;
+  padding: clamp(14px, 2.4vh, 30px) clamp(14px, 1.8vw, 34px); border: 0; border-radius: 30px; min-height: 0;
+  background: linear-gradient(160deg, var(--wa), var(--wb)); box-shadow: 0 16px 44px rgba(0, 0, 0, .38); backdrop-filter: none;
+}
+.dcard.wl.kosong { background: linear-gradient(160deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03)); box-shadow: inset 0 0 0 3px var(--wa); color: rgba(255, 255, 255, .78); }
+.dl-head { display: grid; gap: 2px; }
+.dl-nama { font-size: clamp(1.4rem, 3.4vw, 3rem); font-weight: 800; line-height: 1.1; }
+.dl-mode { font-size: clamp(.85rem, 1.3vw, 1.3rem); opacity: .85; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.dl-no { font-size: clamp(3rem, calc(24vw / var(--cols, 3)), 11rem); font-weight: 800; line-height: 1; letter-spacing: .02em; margin: auto 0; text-shadow: 0 .03em .2em rgba(0, 0, 0, .3); }
+.dl-status { font-size: clamp(.95rem, 1.6vw, 1.5rem); font-weight: 600; opacity: .92; }
+.dcard.wl.kosong .dl-no { opacity: .35; }
+@supports (width: 1cqw) {
+  .dl-nama { font-size: clamp(1.3rem, 8cqw, 3.4rem); } .dl-mode { font-size: clamp(.8rem, 3.6cqw, 1.4rem); }
+  .dl-no { font-size: min(24cqw, 44cqh); } .dl-status { font-size: clamp(.9rem, 4.2cqw, 1.6rem); }
+}
+.disp-foot { gap: 14px; } .dbox { padding: 10px 16px; border-radius: 22px; } .dbox h2 { font-size: .9rem; margin-bottom: 6px; }
+.dchips span { font-size: 1rem; padding: 4px 12px; } .dchips span[class^="wl-"] { background: linear-gradient(160deg, var(--wa), var(--wb)); }
+.disp-wait { text-align: center; opacity: .8; font-weight: 600; font-size: .95rem; }
+.disp-head { gap: 14px; } .disp-head img { width: 56px; height: 56px; } .disp-head h1 { font-size: clamp(1.3rem, 2.8vw, 2.2rem); }
+.disp-clock { font-size: clamp(1.5rem, 3.4vw, 2.8rem); }
+
+/* ---------- panggilan layar penuh ---------- */
+#panggil-root { position: relative; z-index: 90; }
+.panggil {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; text-align: center; color: #fff; overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, var(--wa), var(--wb) 85%); animation: panggil-masuk .4s cubic-bezier(.2, .9, .3, 1) both;
+}
+.panggil::before, .panggil::after { content: ""; position: absolute; width: 85vmin; height: 85vmin; border-radius: 50%; background: rgba(255, 255, 255, .1); animation: gelombang 2.4s ease-out infinite; }
+.panggil::after { animation-delay: 1.2s; }
+.panggil-in { position: relative; display: grid; gap: 3.5vh; padding: 0 3vw; }
+.panggil-no { font-size: min(22vw, 50vh); font-weight: 800; line-height: 1; letter-spacing: .02em; text-shadow: 0 .04em .25em rgba(0, 0, 0, .35); animation: pop .5s cubic-bezier(.2, .8, .2, 1) both; }
+.panggil-tuju small { display: block; font-size: min(3.6vw, 5.5vh); font-weight: 600; letter-spacing: .16em; text-transform: uppercase; opacity: .93; }
+.panggil-tuju b { display: block; font-size: min(10vw, 16vh); font-weight: 800; line-height: 1.05; }
+@keyframes panggil-masuk { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+@keyframes gelombang { 0% { transform: scale(.45); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+
+/* layar sempit (ponsel): kolom menumpuk */
+@media (max-width: 700px) {
+  .disp { height: auto; min-height: 100vh; overflow: visible; }
+  .disp-grid { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: minmax(170px, auto); }
+  .dcard.wl { container-type: normal; gap: 6px; }
+  .dl-no { font-size: 4.5rem; } .dl-nama { font-size: 1.6rem; }
+}

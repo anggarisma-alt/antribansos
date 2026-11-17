@@ -274,6 +274,7 @@
     },
     'ulang-suara'() {
       Suara.unlock();
+      if (AB.mode === 'display') { if (panggilTerakhir) antriPanggilan(panggilTerakhir); else toast('Belum ada panggilan untuk diulang.'); return; }
       if (!Suara.last) { toast('Belum ada panggilan untuk diulang.'); return; }
       Suara.ulang();
     },
@@ -664,6 +665,7 @@
     if (AB.mode !== 'display') return;
     clearTimeout(dispT); clearInterval(dispClock); try { wl && wl.release(); } catch (e) {} AB.mode = '';
     const u = $('#unlock'); if (u) u.remove();
+    panggilAntri = []; const po = $('#panggil-root'); if (po) po.innerHTML = '';
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
     document.body.classList.remove('display');
   }
@@ -695,13 +697,37 @@
       }
       return;                                    // jangan mengumumkan keadaan awal
     }
-    d.loket.forEach(l => {
+    d.loket.forEach((l, i) => {
       const p = lama.loket.filter(x => x.id === l.id)[0];
       if (l.nomor && (!p || p.nomor !== l.nomor || p.jumlah_panggil !== l.jumlah_panggil || p.waktu_panggil !== l.waktu_panggil)) {
-        const el = document.querySelector('.dcard[data-lid="' + l.id + '"]'); if (el) el.classList.add('flash');
-        if (!Suara.muted('display', d.suara)) Suara.announce(l.nomor, l.nama, d.suara);
+        antriPanggilan({ no: l.nomor, loket: l.nama, idx: AB.warnaLoket(l.id, i), suara: d.suara });
       }
     });
+  }
+
+  // ---- Panggilan layar penuh: nomor + loket tujuan, lalu kembali ke tampilan normal ----
+  // Beberapa panggilan bersamaan ditampilkan bergantian. Suara dimulai bersamaan dengan tampilan, dan layar bertahan
+  // sampai ucapan selesai (minimal DURASI_PANGGIL_MS).
+  let panggilAntri = [], panggilJalan = false, panggilTerakhir = null;
+  const tidur = ms => new Promise(r => setTimeout(r, ms));
+  const DURASI = () => Math.max(500, Number(APP_CONFIG.DURASI_PANGGIL_MS) || 6000);
+  function antriPanggilan(it) { panggilTerakhir = it; panggilAntri.push(it); if (!panggilJalan) jalankanPanggilan(); }
+  async function jalankanPanggilan() {
+    panggilJalan = true;
+    try {
+      while (panggilAntri.length && AB.mode === 'display') {
+        const it = panggilAntri.shift();
+        let el = $('#panggil-root'); if (!el) { el = document.createElement('div'); el.id = 'panggil-root'; document.body.appendChild(el); }
+        el.innerHTML = AB.pages.display.overlay(it);
+        const t0 = Date.now(), bisu = Suara.muted('display', it.suara);
+        const suara = bisu ? Promise.resolve() : Suara.announce(it.no, it.loket, it.suara);
+        await Promise.race([suara, tidur(12000)]);
+        await tidur(Math.max(DURASI() - (Date.now() - t0), 0) + (bisu ? 0 : 800));
+      }
+    } finally {
+      panggilJalan = false;
+      const el = $('#panggil-root'); if (el) el.innerHTML = '';
+    }
   }
 
   // ---------- mulai ----------

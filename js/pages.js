@@ -13,7 +13,7 @@
   const cmpAntri = (a, b) => (rankJalur(a.jalur) - rankJalur(b.jalur)) || (b.sisip - a.sisip) || (a.sisip && b.sisip ? (a.waktu_sisip < b.waktu_sisip ? -1 : 1) : 0) || (a.waktu_daftar < b.waktu_daftar ? -1 : a.waktu_daftar > b.waktu_daftar ? 1 : 0);
 
   Object.assign(AB, { E, I, hhmm, bagNo, jalurNama, chipJalur });
-  AB.VERSI_FRONTEND = '2026-10-22.8'; AB.BACKEND_MIN = 6;
+  AB.VERSI_FRONTEND = '2026-10-23.9'; AB.BACKEND_MIN = 6;
   // Membaca isi QR undangan (no, nik, nama, alamat). Format dari pemerintah belum pasti, jadi parser dibuat
   // toleran: JSON, URL berparameter, baris "kunci: nilai", atau berurutan dengan pemisah | ; tab / baris / koma.
   // Yang paling penting hanya NIK 16 digit; bila tidak ditemukan, nik dikembalikan kosong.
@@ -687,21 +687,30 @@
   };
 
   // ---------- LAYAR DISPLAY ----------
+  // Warna tiap loket tetap (dari nomor pada id: L1, L2, …) agar kolom, panggilan layar penuh, dan chip selalu sewarna.
+  const warnaLoket = (id, i) => { const n = parseInt(String(id).replace(/\D/g, ''), 10); return ((((isNaN(n) ? (i || 0) + 1 : n) - 1) % 8) + 8) % 8 + 1; };
+  AB.warnaLoket = warnaLoket;
   AB.pages.display = {
+    // Jumlah kolom/baris agar semua loket terlihat besar dan memenuhi layar
+    grid(n) { const cols = n <= 3 ? Math.max(n, 1) : (n === 4 ? 2 : (n <= 6 ? 3 : 4)); return { cols: cols, rows: Math.max(1, Math.ceil(n / cols)) }; },
+    // Layar penuh saat memanggil: HANYA nomor antrian dan loket tujuan
+    overlay(it) {
+      return '<div class="panggil wl-' + it.idx + '" role="alert" aria-live="assertive"><div class="panggil-in"><div class="panggil-no">' + E(it.no) + '</div>' +
+        '<div class="panggil-tuju"><small>Silakan menuju</small><b>' + E(it.loket) + '</b></div></div></div>';
+    },
     render(d) {
       const logo = d.logo ? '<img src="' + E(d.logo) + '" alt="">' : '';
-      const aktif = d.loket.filter(l => l.nomor).sort((a, b) => a.waktu_panggil < b.waktu_panggil ? 1 : -1);
-      const fitur = aktif[0] || null;
-      const kartu = l => '<div class="dcard ' + (l.nomor ? 'aktif' : '') + '" data-lid="' + E(l.id) + '"><div class="lk">' + E(l.nama) + '</div><div class="mode">' + E(l.mode) + '</div><div class="no ' + (l.nomor ? E(l.nomor.charAt(0)) : 'kosong') + '">' + (l.nomor ? E(l.nomor) : '—') + '</div></div>';
-      const utama = fitur ? '<div class="dcard feat aktif" data-lid="' + E(fitur.id) + '"><span class="feat-tag">' + I('bell') + 'SEDANG DIPANGGIL</span><div class="no ' + E(fitur.nomor.charAt(0)) + '">' + E(fitur.nomor) + '</div><div class="lk">Silakan menuju ' + E(fitur.nama) + '</div></div>' : '';
-      const semua = d.loket.map(kartu).join('') || '<div class="dcard"><div class="lk">Belum ada loket aktif</div></div>';
+      const g = AB.pages.display.grid(d.loket.length), warna = {}, warnaNama = {};
+      d.loket.forEach((l, i) => { warna[l.id] = warnaLoket(l.id, i); warnaNama[l.nama] = warna[l.id]; });
+      const kartu = l => '<div class="dcard wl wl-' + warna[l.id] + (l.nomor ? ' aktif' : ' kosong') + '" data-lid="' + E(l.id) + '"><div class="dl-head"><span class="dl-nama">' + E(l.nama) + '</span><span class="dl-mode">' + E(l.mode) + '</span></div>' +
+        '<div class="dl-no">' + (l.nomor ? E(l.nomor) : '—') + '</div><div class="dl-status">' + (l.nomor ? 'Sedang dilayani' : 'Kosong') + '</div></div>';
+      const semua = d.loket.map(kartu).join('') || '<div class="dcard"><div class="dl-nama">Belum ada loket aktif</div></div>';
       return '<div class="disp"><header class="disp-head">' + logo + '<div><h1>' + E(d.desa) + '</h1><p>' + E(d.kecamatan) + '</p></div><div class="disp-clock"><span id="clock">' + AB.clock(true) + '</span><small>' + E(AB.tanggalPanjang()) + '</small></div></header>' +
-        (utama ? '<section class="disp-feat" aria-live="polite">' + utama + '</section>' : '') +
-        '<div class="disp-label">Semua Loket</div><section class="disp-grid">' + semua + '</section>' +
-        '<section class="disp-foot"><div class="dbox"><h2>Terakhir dipanggil</h2><div class="dchips">' + (d.terakhir.length ? d.terakhir.map(x => '<span>' + E(x.no) + (x.loket ? ' · ' + E(singkatLoket(x.loket)) : '') + '</span>').join('') : '<span>—</span>') + '</div></div>' +
+        '<section class="disp-grid" style="--cols:' + g.cols + ';--rows:' + g.rows + '" aria-label="Loket">' + semua + '</section>' +
+        '<section class="disp-foot"><div class="dbox"><h2>Terakhir dipanggil</h2><div class="dchips">' + (d.terakhir.length ? d.terakhir.map(x => '<span class="wl-' + (warnaNama[x.loket] || 1) + '">' + E(x.no) + (x.loket ? ' · ' + E(singkatLoket(x.loket)) : '') + '</span>').join('') : '<span>—</span>') + '</div></div>' +
         '<div class="dbox"><h2>Terlewati — silakan lapor ke petugas</h2><div class="dchips">' + (d.terlewati.length ? d.terlewati.slice(0, 12).map(x => '<span class="warn">' + E(x.no) + '</span>').join('') : '<span>—</span>') + '</div></div></section>' +
-        '<p style="text-align:center;opacity:.8;font-weight:600">Menunggu: Prioritas ' + d.menunggu.P + ' · Umum ' + d.menunggu.U + (d.menunggu.K ? ' · Khusus ' + d.menunggu.K : '') + '</p></div>' +
-        '<div class="disp-ctrl"><button class="icon-btn" data-act="toggle-mute" data-ctx="display" aria-label="Suara">' + I(Suara.muted('display', d.suara) ? 'mute' : 'volume') + '</button><button class="icon-btn" data-act="ulang-suara" aria-label="Ulangi suara">' + I('repeat') + '</button><button class="icon-btn" data-act="fullscreen" aria-label="Layar penuh">' + I('maximize') + '</button><button class="icon-btn" data-act="keluar-display" aria-label="Keluar dari layar display">' + I('logout') + '</button></div>';
+        '<p class="disp-wait">Menunggu: Prioritas ' + d.menunggu.P + ' · Umum ' + d.menunggu.U + (d.menunggu.K ? ' · Khusus ' + d.menunggu.K : '') + '</p></div>' +
+        '<div class="disp-ctrl"><button class="icon-btn" data-act="toggle-mute" data-ctx="display" aria-label="Suara">' + I(Suara.muted('display', d.suara) ? 'mute' : 'volume') + '</button><button class="icon-btn" data-act="ulang-suara" aria-label="Ulangi panggilan terakhir">' + I('repeat') + '</button><button class="icon-btn" data-act="fullscreen" aria-label="Layar penuh">' + I('maximize') + '</button><button class="icon-btn" data-act="keluar-display" aria-label="Keluar dari layar display">' + I('logout') + '</button></div>';
     }
   };
 })();

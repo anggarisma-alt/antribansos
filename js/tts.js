@@ -53,13 +53,16 @@
       return String(format || 'Nomor antrian {nomor}, silakan menuju {loket}').replace('{nomor}', this.ucapNomor(no)).replace('{loket}', loket || '');
     },
 
+    // Mengembalikan Promise yang selesai saat ucapan (dan "ding") habis, supaya layar bisa menyelaraskan tampilan dengan suara
     announce(no, loket, s) {          // s = {ding, kecepatan, volume, format}
-      const teks = this.kalimat(s && s.format, no, loket);
-      this.last = { teks: teks, s: s || {} };
-      this.queue.push(this.last);
-      this._next();
+      const item = { teks: this.kalimat(s && s.format, no, loket), s: s || {} };
+      this.last = item;
+      return new Promise(res => { item.selesai = res; this.queue.push(item); this._next(); });
     },
-    ulang() { if (this.last) { this.queue.push(this.last); this._next(); } },
+    ulang() {
+      if (!this.last) return Promise.resolve();
+      return new Promise(res => { this.queue.push(Object.assign({}, this.last, { selesai: res })); this._next(); });
+    },
 
     async _next() {
       if (this.busy || !this.queue.length) return;
@@ -80,6 +83,7 @@
           });
         }
       } catch (e) {}
+      try { if (item.selesai) item.selesai(); } catch (e) {}
       this.busy = false;
       this._next();
     }
